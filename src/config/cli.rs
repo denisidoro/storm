@@ -1,5 +1,5 @@
 use clap::{Parser, Subcommand};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 #[derive(Subcommand, Debug, Clone)]
 pub enum Command {

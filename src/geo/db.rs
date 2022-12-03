@@ -1,17 +1,16 @@
-use std::collections::VecDeque;
-
 use super::bsp;
 use super::simple8b;
 use anyhow::Context;
 use anyhow::Result;
 use chrono::{DateTime, FixedOffset};
+use std::collections::VecDeque;
 
 pub type LatLng = (f32, f32);
 type Minutes = u32;
 
 const ORIGIN: u64 = 0;
-const BIT_SHIFTS: usize = (32 - bsp::OPERATIONS) * 2 + 1;
-const MAX_ERROR: f32 = 8.;
+const BIT_SHIFTS: usize = (32 - bsp::OPERATIONS) * 2;
+const MAX_ERROR: f32 = 9.;
 
 pub fn distance_meters(start: LatLng, end: LatLng) -> f32 {
     let r = 6371000.;
@@ -103,7 +102,7 @@ impl Builder {
         let calculated = packed_to_latlng(apply_delta(self.reference, delta));
         let error = distance_meters(pos, calculated);
         if error > MAX_ERROR {
-            return Err(anyhow!("error too big: {}", error));
+            return Err(anyhow!("error too big: {} > {}", error, MAX_ERROR));
         }
 
         self.buffer.push_back(delta);

@@ -1,6 +1,6 @@
 [package]
 name = "storm"
-version = "0.7.0"
+version = "0.8.0"
 authors = ["Denis Isidoro <denis_isidoro@live.com>"]
 edition = "2021"
 description = "Cloud utilities"
