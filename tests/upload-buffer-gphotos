@@ -1,0 +1,59 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+export STORM_HOME="$(cd "$(dirname "$0")/.." && pwd)"
+source "${STORM_HOME}/scripts/aux/core.bash"
+source "${STORM_HOME}/scripts/aux/test.bash"
+
+setup_folders() {
+   local -r rj="${SDCARD}/Storm/gphotos"
+   mkdir -p "$rj"
+   cd "$rj"
+
+   touch 03.jpg
+   touch 04.jpg
+   touch 05.jpg
+
+   local -r cloud_gphotos="${CLOUD}/gphotos"
+   mkdir -p "${cloud_gphotos}/media"
+
+   local -r rclone_album="${cloud_gphotos}/albums/rclone"
+   mkdir -p "$rclone_album"
+   cd "$rclone_album"
+
+   touch 00.jpg
+   touch 01.jpg
+   touch 02.jpg
+}
+
+check_tree() {
+   cd "$1"
+
+   local -r expected_cloud="$(cat <<EOF
+.
+├── albums
+│   └── rclone
+│       ├── 00.jpg
+│       ├── 01.jpg
+│       ├── 02.jpg
+│       ├── 03.jpg
+│       ├── 04.jpg
+│       └── 05.jpg
+└── media
+
+3 directories, 6 files
+EOF
+   )"
+
+   tree . | test::eq "$expected_cloud"
+}
+
+main() {
+   cleanup
+   setup_env
+   setup_folders
+   run upload-buffer gphotos "/albums/rclone"
+   check_tree "${CLOUD}/gphotos"
+}
+
+main "$@"

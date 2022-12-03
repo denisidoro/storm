@@ -1,0 +1,171 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+export STORM_HOME="$(cd "$(dirname "$0")/.." && pwd)"
+source "${STORM_HOME}/scripts/aux/core.bash"
+source "${STORM_HOME}/scripts/aux/test.bash"
+
+CAMERA="${SDCARD}/Pictures/Camera"
+
+find_all_media() {
+   find "$SDCARD" -type f \( -iname \*.jpg -o -iname \*.mp4 -o -iname \*.heic -o -iname \*.HEIC \)
+}
+
+_convert() {
+   local -r name1="${4}.jpg"
+   local -r name2="${4}${5}"
+
+   convert "$1" "$2" "$3" "$name1"
+   mv "$name1" "$name2"
+}
+
+setup_folders() {
+   local -r november="${CAMERA}/Znov"
+   mkdir -p "$november"
+   cd "$november"
+   create_img 00.jpg
+   create_img 01.jpg
+   create_img "02 foo bar.heic"
+   touch unrelated_file.docx
+
+   local -r december="${CAMERA}/Zdec"
+   mkdir -p "$december"
+   cd "$december"
+   ffmpeg -framerate 1 -i "${november}/%02d.jpg" "03 lorem ipsum.mov"
+   apply_exif "03 lorem ipsum.mov"
+
+   mkdir -p "$CAMERA"
+   cd "$CAMERA"
+   create_img 04.jpg
+   create_img "05 spaces!&#@* foo.jpg"
+   create_img "06 foo bar.HEIC"
+   create_img "07.heic.jpg"
+
+   local -r gphotos="${SDCARD}/Storm/gphotos"
+   mkdir -p "$gphotos"
+   cp "$november/00.jpg" "${gphotos}/Znov_00.jpg"
+   cp "$december/03 lorem ipsum.mov" "${gphotos}/Zdec_03_lorem_ipsum.mov"
+}
+
+check_tree() {
+   local -r id="$1"
+   cd "$SDCARD"
+
+   remove_empty_dirs "$SDCARD"
+
+   local -r expected="$(cat <<EOF
+.
+├── Pictures
+│   └── Camera
+│       └── Znov
+│           └── unrelated_file.docx
+└── Storm
+    ├── alumni
+    │   └── Pictures
+    │       └── Camera
+    │           ├── ${id}
+    │           │   ├── 04.jpg.7z
+    │           │   ├── 05_spaces______foo.jpg.7z
+    │           │   ├── 06_foo_bar.heic.jpg.7z
+    │           │   └── 07.heic.jpg.7z
+    │           ├── Zdec
+    │           │   └── 03_lorem_ipsum.mov.7z
+    │           └── Znov
+    │               ├── 00.jpg.7z
+    │               ├── 01.jpg.7z
+    │               └── 02_foo_bar.heic.jpg.7z
+    ├── gphotos
+    │   ├── ${id}_04.jpg
+    │   ├── ${id}_05_spaces______foo.jpg
+    │   ├── ${id}_06_foo_bar.heic.jpg
+    │   ├── ${id}_07.heic.jpg
+    │   ├── Zdec_03_lorem_ipsum.mov
+    │   ├── Znov_00.jpg
+    │   ├── Znov_01.jpg
+    │   └── Znov_02_foo_bar.heic.jpg
+    ├── pcloud
+    │   └── Pictures
+    │       └── Camera
+    │           ├── ${id}
+    │           │   ├── 04.jpg.7z
+    │           │   ├── 05_spaces______foo.jpg.7z
+    │           │   ├── 06_foo_bar.heic.jpg.7z
+    │           │   └── 07.heic.jpg.7z
+    │           ├── Zdec
+    │           │   └── 03_lorem_ipsum.mov.7z
+    │           └── Znov
+    │               ├── 00.jpg.7z
+    │               ├── 01.jpg.7z
+    │               └── 02_foo_bar.heic.jpg.7z
+    └── telegram
+        └── Pictures
+            └── Camera
+                ├── ${id}
+                │   ├── 04.jpg
+                │   ├── 05_spaces______foo.jpg
+                │   ├── 06_foo_bar.heic.jpg
+                │   └── 07.heic.jpg
+                ├── Zdec
+                │   └── 03_lorem_ipsum.mov
+                └── Znov
+                    ├── 00.jpg
+                    ├── 01.jpg
+                    └── 02_foo_bar.heic.jpg
+
+23 directories, 33 files
+EOF
+   )"
+
+   tree . | test::eq "$expected"
+}
+
+check_7z() {
+   local -r file="${SDCARD}/Storm/alumni/Pictures/Camera/Znov/00.jpg"
+   local -r zipped_file="${file}.7z"
+
+   if [ -f "$file" ]; then
+      echoerr "${file} shouldn't exist"
+      exit 1
+   fi
+
+   if 7z x "$zipped_file" -p"mypass" &>/dev/null; then
+      echoerr "wrong password should fail"
+      exit 1
+   fi
+
+   if [ -f "$file" ]; then
+      echoerr "${file} shouldn't exist"
+      exit 1
+   fi
+
+   cd "$(dirname "$zipped_file")"
+   7z x "$zipped_file" -p"1C0HFZ8RSY9PWBBMC81TOTZT"
+
+   if ! [ -f "$file" ]; then
+      echoerr "${file} should exist"
+      exit 1
+   fi
+}
+
+check_exif() {
+   local meta
+   IFS=$'\n'
+   for filename in $(find_all_media); do
+      meta="$(exiftool "$filename")"
+      echo "$meta" | test::contains "$CAMERA_MODEL"
+      echo "$meta" | test::contains "$GPS_POS"
+   done
+}
+
+main() {
+   cleanup
+   setup_env
+   setup_folders
+   run set-camera-buffers
+   local -r id="$(get_folder_ids "$CAMERA" | xargs)"
+   check_tree "$id"
+   check_7z
+   check_exif
+}
+
+main "$@"

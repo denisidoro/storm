@@ -1,0 +1,52 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+export STORM_HOME="$(cd "$(dirname "$0")/../.." && pwd)"
+source "${STORM_HOME}/scripts/aux/core.bash"
+source "${STORM_HOME}/scripts/aux/test.bash"
+
+original_rclone() {
+   local f="/usr/bin/rclone"
+   if command -v "$f"; then
+      return "$f"
+   fi
+
+   f="/usr/local/bin/rclone"
+   if command -v "$f"; then
+      return "$f"
+   fi
+}
+
+_rclone() {
+   echoerr called rclone "$*"
+   declare -a args
+   for i in "$@"; do
+      arg="$(echo "$i" | sed -E "s|^([^:]+):|${CLOUD}/\1/|" | sed 's|//|/|g')"
+      args+=("$arg")
+   done
+
+   export RCLONE_CONFIG="${STORM_HOME}/scripts/mock/rclone.conf"
+   set -x
+
+   local -r rclone="$(original_rclone)"
+   if [ -z "$rclone" ]; then
+      echoerr "rclone not installed"
+      exit 2
+   fi
+
+   tap "$rclone" "${args[@]}"
+}
+
+main() {
+   if [[ "$*" = *"--include-from"* ]]; then
+      sleep 1 # for timestamp-based tests to become deterministic
+   fi
+
+   if [[ " $* " = *" ls "* ]]; then
+      _rclone "$@" | sort -k2
+   else
+      _rclone "$@"
+   fi
+}
+
+main "$@"

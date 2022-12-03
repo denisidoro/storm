@@ -1,0 +1,69 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+export STORM_HOME="$(cd "$(dirname "$0")/.." && pwd)"
+source "${STORM_HOME}/scripts/aux/core.bash"
+source "${STORM_HOME}/scripts/aux/test.bash"
+
+setup_folders() {
+   local -r fiction="${SDCARD}/${FICTION}"
+   mkdir -p "$fiction" || true
+   cd "$fiction"
+
+   touch 00.txt
+   touch 01.txt
+   touch 02.txt
+
+   local -r savegames="${SDCARD}/${SAVEGAMES}"
+   mkdir -p "$savegames" || true
+   cd "$savegames"
+
+   touch 03.3ds
+   truncate -s 5M 04.3ds
+   touch 05.3ds.app
+   touch 06.3ds
+
+   touch "${fiction}/.DS_Store"
+   touch "${savegames}/.DS_Store"
+
+   local -r app="${SDCARD}/App"
+   mkdir -p "$app" || true
+   cd "$app"
+
+   touch singlefile.txt
+}
+
+check_tree() {
+   cd "$1"
+
+   local -r expected="$(cat <<EOF
+.
+├── Android
+│   └── app_singlefile.txt
+├── Books
+│   └── Fiction
+│       ├── 00.txt
+│       ├── 01.txt
+│       └── 02.txt
+└── Games
+    └── Citra
+        └── Savegames
+            ├── 03.3ds
+            └── 06.3ds
+
+6 directories, 6 files
+EOF
+   )"
+
+   tree . | test::eq "$expected"
+}
+
+main() {
+   cleanup
+   setup_env
+   setup_folders
+   run set-backup-buffer
+   check_tree "${SDCARD}/Storm/box"
+}
+
+main "$@"

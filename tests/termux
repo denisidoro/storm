@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+export STORM_HOME="$(cd "$(dirname "$0")/.." && pwd)"
+source "${STORM_HOME}/scripts/aux/core.bash"
+source "${STORM_HOME}/scripts/aux/test.bash"
+
+check_failure_log() {
+   cat "${TASKER_TMP}/"*rempath* | test::contains "undefined"
+}
+
+check_success_log() {
+   cat "${TASKER_TMP}/"*password* | test::contains "AMUWWVN77GOJVZEALQMMEOLK4"
+}
+
+main() {
+   cleanup
+   setup_env
+
+   if run upload-buffer pcloud "%rempath"; then
+      echoerr "run should have failed"
+      exit 1
+   fi
+   check_failure_log
+
+   run password "foo.7z" &>/dev/null
+   check_success_log
+}
+
+main "$@"

@@ -1,0 +1,65 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+export STORM_HOME="$(cd "$(dirname "$0")/.." && pwd)"
+source "${STORM_HOME}/scripts/aux/core.bash"
+source "${STORM_HOME}/scripts/aux/test.bash"
+
+_touch() {
+   mkdir -p "$(dirname "$1")" || true
+   touch "$1"
+}
+
+setup_folders() {
+   local -r trips="${CLOUD}/pcloud/Camera/Trips"
+   _touch "${trips}/berlin.jpg"
+   _touch "${trips}/ny.jpg"
+   _touch "${trips}/sp.jpg"
+
+   local -r pictures="${SDCARD}/Pictures"
+   _touch "${pictures}/Screenshots/app.jpg"
+   _touch "${pictures}/Camera/Trips/old.jpg"
+   _touch "${pictures}/Camera/Landscapes/mountain.jpg"
+}
+
+check_cloud() {
+   if [ -d  "${CLOUD}/pcloud" ]; then
+      echo "directory shouldn't exist"
+      return 1
+   fi
+}
+
+check_local() {
+   cd "$SDCARD"
+
+   local -r expected="$(cat <<EOF
+.
+└── Pictures
+    ├── Camera
+    │   ├── Landscapes
+    │   │   └── mountain.jpg
+    │   └── Trips
+    │       ├── berlin.jpg
+    │       ├── ny.jpg
+    │       ├── old.jpg
+    │       └── sp.jpg
+    └── Screenshots
+        └── app.jpg
+
+5 directories, 6 files
+EOF
+   )"
+
+   tree . | test::eq "$expected"
+}
+
+main() {
+   cleanup
+   setup_env
+   setup_folders
+   run move pcloud / "${SDCARD}/Pictures"
+   check_cloud
+   check_local
+}
+
+main "$@"

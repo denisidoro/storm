@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+export STORM_HOME="$(cd "$(dirname "$0")/.." && pwd)"
+
+test_one() {
+   set -x
+   "${STORM_HOME}/tests/$*"
+}
+
+_cargo() {
+   cd "$STORM_HOME"
+   cargo test
+}
+
+main() {
+   rm "${STORM_HOME}/tests/run" &>/dev/null || true
+
+   if [[ $# = 0 ]]; then
+      _cargo
+      IFS=$'\n'
+      cd "${STORM_HOME}/tests"
+      for t in $(find "." -perm +111 -type f); do
+         test_one "$t"
+      done
+   else
+      for i in "$@"; do
+         test_one "$i"
+      done
+   fi
+}
+
+main "$@"

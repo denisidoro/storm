@@ -1,0 +1,61 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+export STORM_HOME="$(cd "$(dirname "$0")/.." && pwd)"
+source "${STORM_HOME}/scripts/aux/core.bash"
+source "${STORM_HOME}/scripts/aux/test.bash"
+
+setup_folders() {
+   local -r games="${SDCARD}/Storm/box/Games"
+   mkdir -p "$games"
+   cd "$games"
+
+   touch 00.txt
+   touch 01.txt
+   touch 02.txt
+
+   local -r books="${SDCARD}/Storm/box/Books"
+   mkdir -p "$books"
+   cd "$books"
+
+   touch 03.txt
+   touch 04.txt
+   touch 05.txt
+}
+
+check_tree() {
+   cd "$1"
+
+   local -r expected_cloud="$(cat <<EOF
+.
+├── Books
+│   ├── 03.txt
+│   ├── 04.txt
+│   └── 05.txt
+└── Games
+    ├── 00.txt
+    ├── 01.txt
+    └── 02.txt
+
+2 directories, 6 files
+EOF
+   )"
+
+   tree . | test::eq "$expected_cloud"
+}
+
+main() {
+   local -r sdcard_box="${SDCARD}/Storm/box"
+   cleanup
+   setup_env
+   setup_folders
+   check_tree "$sdcard_box"
+   run upload-buffer box
+   check_tree "${CLOUD}/box"
+   if [ -d "$sdcard_box" ]; then
+      echoerr "${sdcard_box} shouldn't exist"
+      exit 1
+   fi
+}
+
+main "$@"

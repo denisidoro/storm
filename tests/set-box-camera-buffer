@@ -1,0 +1,64 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+export STORM_HOME="$(cd "$(dirname "$0")/.." && pwd)"
+source "${STORM_HOME}/scripts/aux/core.bash"
+source "${STORM_HOME}/scripts/aux/test.bash"
+
+
+setup_folders() {
+   mkdir -p "$DCIM_CAMERA" || true
+   cd "$DCIM_CAMERA"
+
+   touch 00.jpg
+   touch 01.jpg
+   touch 02.jpg
+   touch 03.txt
+}
+
+check_tree() {
+   remove_empty_dirs "$1"
+   
+   cd "$1"
+   local -r id="$2"
+
+   local expected
+   expected="$(cat <<EOF
+.
+├── DCIM
+│   └── Camera
+│       └── 03.txt
+├── Pictures
+│   └── Camera
+│       └── ${id}
+│           ├── 00.jpg
+│           ├── 01.jpg
+│           └── 02.jpg
+└── Storm
+    └── box
+        └── Storm
+            └── phone
+                └── Pictures
+                    └── Camera
+                        └── ${id}
+                            ├── 00.jpg
+                            ├── 01.jpg
+                            └── 02.jpg
+
+12 directories, 7 files
+EOF
+   )"
+
+   tree . | test::eq "$expected"
+}
+
+main() {
+   cleanup
+   setup_env
+   setup_folders
+   run set-backup-camera-buffer
+   local -r id="$(get_folder_ids "${SDCARD}/Storm/box/${STORM_CAMERA}" | xargs)"
+   check_tree "$SDCARD" "$id"
+}
+
+main "$@"

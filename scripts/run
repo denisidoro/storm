@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+export STORM_HOME="$(cd "$(dirname "$0")/.." && pwd)"
+source "${STORM_HOME}/scripts/aux/core.bash"
+
+main() {
+   local f="${STORM_HOME}/target/debug/${STORM_BIN_NAME}"
+   if [ -f "$f" ]; then
+      "$f" "$@"
+      return 0
+   fi
+
+   f="${STORM_HOME}/target/release/${STORM_BIN_NAME}"
+   if [ -f "$f" ]; then
+      "$f" "$@"
+      return 0
+   fi
+
+   if command_exists "${STORM_BIN_NAME}"; then
+      "${STORM_BIN_NAME}" "$@"
+      return 0
+   fi
+
+   cd "$STORM_HOME"
+   cargo run -- "$@"
+}
+
+main "$@"

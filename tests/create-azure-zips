@@ -1,0 +1,147 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+export STORM_HOME="$(cd "$(dirname "$0")/.." && pwd)"
+source "${STORM_HOME}/scripts/aux/core.bash"
+source "${STORM_HOME}/scripts/aux/test.bash"
+
+
+_touch() {
+   local -r path="$1"
+   local -r size="$2"
+
+   mkdir -p "$(dirname "$path")" || true
+
+   if [[ "$path" = *".jpg" ]]; then
+      convert -size 10x10 xc:white "$path"
+      truncate -s "$size" "$path"
+      exiftool -overwrite_original_in_place "-DateTimeOriginal=2015:01:15 10:20:30" "$path"
+   else
+      touch "$path"
+      truncate -s "$size" "$path" 
+   fi
+
+   touch -a -m -t "201402011200.00" "$path"
+}
+
+setup_folders() {
+   local -r trips="${CLOUD}/alumni/Pictures/Camera/Trips"
+   _touch "${trips}/berlin.jpg" "32k"
+   _touch "${trips}/ny.jpg" "98k"
+   _touch "${trips}/sp.jpg" "85k"
+   _touch "${trips}/tunisia.jpg" "70k"
+   _touch "${trips}/ukraine.jpg" "30k"
+
+   local -r science="${CLOUD}/alumni/Books/Music"
+   _touch "${science}/1toobig.pdf" "2M"
+   _touch "${science}/2deny.pdf" "32k"
+   _touch "${science}/bass.pdf" "88k"
+   _touch "${science}/flute.pdf" "90k"
+   _touch "${science}/guitar.pdf" "32k"
+
+  local -r db="$(cat <<EOF
+=
+Books
+  Music
+Pictures
+  Camera
+    Trips
+=
+2
+guitar.pdf;44;201030
+drums.pdf;44;201030
+3
+monster.txt;22;930606
+5
+sp.jpg;42;220106
+sf.jpg;42;220106
+EOF
+)"
+
+   local -r dbfolder="${SDCARD}/Storm/azuredb"
+   mkdir -p "$dbfolder" || true
+   echo "$db" > "${dbfolder}/mydb.storm.txt"
+}
+
+check_zip() {
+  cd "${SDCARD}/Storm/azure/ByTimestamp" 
+  local -r filename="$(ls . | head -n1)"
+  local -r password="$(run password "$filename")"
+  7z x "-p${password}" "$filename"
+  rm ./*.7z
+  
+    local -r expected="$(cat <<EOF
+.
+├── Books
+│   └── Music
+│       ├── bass.pdf
+│       └── flute.pdf
+└── Pictures
+    └── Camera
+        └── Trips
+            ├── berlin.jpg
+            ├── ny.jpg
+            └── tunisia.jpg
+
+5 directories, 5 files
+EOF
+   )"
+
+   tree . | test::eq "$expected"
+}
+
+check_dbs() {
+   cd "${SDCARD}/Storm/azuredb"
+
+   cat "./mydb.storm.txt" | test::contains "monster"
+
+   cd "ByTimestamp"
+   tree .
+   local -r dbs="$(ls . | sort)"
+   local -r db1="$(echo "$dbs" | head -n1)"
+   local -r db2="$(echo "$dbs" | tail -n1)"
+
+   local -r expected1="$(cat <<EOF
+=
+Books
+  Music
+Pictures
+  Camera
+    Trips
+=
+2
+bass.pdf;88;140201
+flute.pdf;90;140201
+5
+berlin.jpg;32;150115
+ny.jpg;98;150115
+tunisia.jpg;70;150115
+EOF
+   )"
+
+   cat "$db1" | test::contains "$expected1"
+
+   local -r expected2="$(cat <<EOF
+=
+Pictures
+  Camera
+    Trips
+=
+3
+ukraine.jpg;30;150115
+EOF
+   )"
+
+   cat "$db2" | test::contains "$expected2"
+}
+
+main() {
+   cleanup
+   setup_env
+   setup_folders
+   run create-archive-zips
+   check_zip
+   check_dbs
+}
+
+main "$@"

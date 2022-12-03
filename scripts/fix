@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+export STORM_HOME="$(cd "$(dirname "$0")/.." && pwd)"
+source "${STORM_HOME}/scripts/aux/core.bash"
+
+_commit() {
+   if [ -n "${DOTFILES:-}" ]; then
+      git add --all || true
+      dot git commit am || true
+   fi
+}
+
+cd "$STORM_HOME"
+
+_commit
+log::note "cargo clippy fix..."
+cargo +nightly clippy --fix -Z unstable-options || true
+
+_commit
+log::note "cargo fix..."
+cargo fix || true
+
+_commit
+log::note "cargo fmt..."
+cargo fmt || true
+
+_commit
+log::note "clippy..."
+cargo clippy || true
+
+_commit
+log::note "dot code beautify..."
+find scripts -type f | xargs -I% dot code beautify % || true
+dot code beautify "${STORM_HOME}/tests/run" || true

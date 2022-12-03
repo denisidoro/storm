@@ -1,0 +1,92 @@
+on: [push]
+
+name: CI
+
+jobs:
+  test:
+    name: Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v2
+
+      - name: Install stable toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+
+      - name: Run cargo test
+        uses: actions-rs/cargo@v1
+        continue-on-error: false
+        with:
+          command: test
+
+      - name: Install deps
+        run: ./scripts/dep rclone which touch 7z curl imagemagick exiftool ffmpeg convert truncate magick && which rclone
+
+      - name: Test termux
+        run: ./scripts/test termux
+
+      - name: Test set-box-buffer
+        run: ./scripts/test set-box-buffer
+
+      - name: Test move-pcloud
+        run: ./scripts/test move-pcloud
+
+      - name: Test set-box-camera-buffer
+        run: ./scripts/test set-box-buffer
+
+      - name: Test set-camera-buffers
+        run: ./scripts/test set-camera-buffers
+
+      - name: Test upload-telegram-buffer
+        run: ./scripts/test upload-telegram-buffer
+
+      - name: Test upload-buffer-box
+        run: ./scripts/test upload-buffer-box
+
+      - name: Test upload-buffer-gphotos
+        run: ./scripts/test upload-buffer-gphotos
+
+      - name: Test create-azure-zips
+        run: ./scripts/test create-azure-zips
+
+      - name: Test e2e-camera
+        run: ./scripts/test e2e-camera
+
+  lints:
+    name: Lints
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v2
+
+      - name: Install stable toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+          components: rustfmt, clippy
+
+      - name: Run cargo check
+        uses: actions-rs/cargo@v1
+        continue-on-error: false
+        with:
+          command: check
+
+      - name: Run cargo fmt
+        uses: actions-rs/cargo@v1
+        continue-on-error: false
+        with:
+          command: fmt
+          args: --all -- --check
+
+      - name: Run cargo clippy
+        uses: actions-rs/cargo@v1
+        continue-on-error: false
+        with:
+          command: clippy
+          args: -- -D warnings

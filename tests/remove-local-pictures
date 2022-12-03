@@ -1,0 +1,60 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+export STORM_HOME="$(cd "$(dirname "$0")/.." && pwd)"
+source "${STORM_HOME}/scripts/aux/core.bash"
+source "${STORM_HOME}/scripts/aux/test.bash"
+
+RCLONE_ALBUM="${CLOUD}/gphotos/album/rclone"
+
+setup_folders() {
+   mkdir -p "$RCLONE_ALBUM" || true
+   cd "$RCLONE_ALBUM"
+
+   touch ABCD_00.jpg
+   touch ABCD_01.jpg
+
+   touch WXYZ_02.jpg
+   touch WXYZ_03.jpg
+
+   mkdir -p "$PICTURES_CAMERA" || true
+   cd "$PICTURES_CAMERA"
+
+   mkdir "ABCD"
+   touch "ABCD/00.jpg"
+   touch "ABCD/01.jpg"
+
+   mkdir "FOOB"
+   touch "FOOB/04.jpg"
+   touch "FOOB/05.jpg"
+}
+
+check_sdcard_tree() {
+   remove_empty_dirs "$SDCARD"
+   cd "$SDCARD"
+
+   local expected
+   expected="$(cat <<EOF
+.
+└── Pictures
+    └── Camera
+        └── FOOB
+            ├── 04.jpg
+            └── 05.jpg
+
+3 directories, 2 files
+EOF
+   )"
+
+   tree . | test::eq "$expected"
+}
+
+main() {
+   cleanup
+   setup_env
+   setup_folders
+   run remove-backed-pictures
+   check_sdcard_tree
+}
+
+main "$@"

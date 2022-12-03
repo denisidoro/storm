@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+export STORM_HOME="$(cd "$(dirname "$0")/../.." && pwd)"
+source "${STORM_HOME}/scripts/aux/core.bash"
+source "${STORM_HOME}/scripts/aux/test.bash"
+
+send_document() {
+   local -r from="$(echo "$@" | grep -Eo 'document=@"[^"]+' | sed 's/document=@"//')"
+   local -r to="$(echo "$from" | sed "s|${SDCARD}|${CLOUD}|")"
+   mkdir -p "$(dirname "$to")" || true
+   cp "$from" "$to"
+   echo '{"mock": true, "success": true, "from": "'"$from"'", "to": "'"$to"'"}'
+}
+
+unknown_command() {
+   echo '{"mock": true, "success": false, "reason": "unknown command"}'
+   return 1
+}
+
+main() {
+   echoerr "curl called with args [$*]"
+   case "$*" in
+      *"https://api.telegram.org/botmockToken/sendDocument"*) send_document "$@" ;;
+      *) unknown_command "$@" ;;
+   esac
+}
+
+main "$@"

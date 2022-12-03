@@ -1,0 +1,223 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+export STORM_HOME="$(cd "$(dirname "$0")/.." && pwd)"
+source "${STORM_HOME}/scripts/aux/core.bash"
+source "${STORM_HOME}/scripts/aux/test.bash"
+
+CLOUD_VV="${CLOUD}/vvdropbox/Camera uploads"
+RCLONE_ALBUM="${CLOUD}/gphotos/album/rclone"
+RCLONE_ALBUM_VV="${CLOUD}/vvgphotos/album/rclone"
+BOX_CAMERA="${CLOUD}/box/${STORM_CAMERA}"
+
+setup_folders() {
+   create_img "${DCIM_CAMERA}/00.jpg"   
+   create_img "${DCIM_CAMERA}/01.jpg"   
+   create_img "${DCIM_CAMERA}/Zgreece/02.jpg"   
+   create_img "${DCIM_CAMERA}/Zgreece/03.jpg"   
+   create_img "${DCIM_CAMERA}/Zspain/04.jpg"   
+   create_txt "${DCIM_CAMERA}/05.txt"   
+
+   create_img "${PICTURES_CAMERA}/10.jpg"
+   create_img "${PICTURES_CAMERA}/Zgreece/11.jpg"
+
+   create_img "${CLOUD_VV}/20 foo.jpg"
+   create_img "${CLOUD_VV}/Zfrance/21 foo.HEIC"
+
+   create_img "${PICTURES_CAMERA_VV}/Zfrance/30.jpg"
+
+   create_img "${RCLONE_ALBUM}/40.jpg"
+   create_img "${RCLONE_ALBUM}/41.jpg"
+   create_img "${RCLONE_ALBUM}/Zgreece_03.jpg"
+   create_img "${RCLONE_ALBUM}/Zgreece_42.jpg"
+   create_img "${RCLONE_ALBUM}/Zportugal_43.jpg"
+
+   create_img "${RCLONE_ALBUM_VV}/50.jpg"
+   create_img "${RCLONE_ALBUM_VV}/Zfrance_51.jpg"
+
+   create_img "${BOX_CAMERA}/60.jpg"
+   create_img "${BOX_CAMERA}/Zgreece/61.jpg"
+   create_img "${BOX_CAMERA}/Zuk/62.jpg"
+   create_img "${BOX_CAMERA}/63.txt"
+
+   create_img "${SDCARD}/Pictures/Screenshots/70.jpg"
+
+   create_txt "${CLOUD}/box/Books/80.txt"   
+   create_txt "${CLOUD}/box/Storm/db/81.txt"   
+}
+
+check_sdcard_tree() {
+   remove_empty_dirs "$SDCARD"
+   cd "$SDCARD"
+
+   local expected
+   expected="$(cat <<EOF
+.
+├── DCIM
+│   └── Camera
+│       └── 05.txt
+└── Pictures
+    └── Screenshots
+        └── 70.jpg
+
+4 directories, 2 files
+EOF
+   )"
+
+   tree . | test::eq "$expected"
+}
+
+check_cloud_tree() {
+   local -r id="$1"
+
+   cd "$CLOUD"
+
+   local expected
+   expected="$(cat <<EOF
+.
+├── Storm
+│   └── telegram
+│       ├── Pictures
+│       │   └── Camera
+│       │       ├── ${id}
+│       │       │   ├── 00.jpg
+│       │       │   ├── 01.jpg
+│       │       │   ├── 10.jpg
+│       │       │   └── 60.jpg
+│       │       ├── Zgreece
+│       │       │   ├── 02.jpg
+│       │       │   ├── 03.jpg
+│       │       │   ├── 11.jpg
+│       │       │   └── 61.jpg
+│       │       ├── Zspain
+│       │       │   └── 04.jpg
+│       │       └── Zuk
+│       │           └── 62.jpg
+│       └── VV
+│           └── Pictures
+│               └── Camera
+│                   ├── ${id}
+│                   │   └── 20_foo.jpg
+│                   └── Zfrance
+│                       ├── 21_foo.heic.jpg
+│                       └── 30.jpg
+├── alumni
+│   ├── Pictures
+│   │   └── Camera
+│   │       ├── ${id}
+│   │       │   ├── 00.jpg.7z
+│   │       │   ├── 01.jpg.7z
+│   │       │   ├── 10.jpg.7z
+│   │       │   └── 60.jpg.7z
+│   │       ├── Zgreece
+│   │       │   ├── 02.jpg.7z
+│   │       │   ├── 03.jpg.7z
+│   │       │   ├── 11.jpg.7z
+│   │       │   └── 61.jpg.7z
+│   │       ├── Zspain
+│   │       │   └── 04.jpg.7z
+│   │       └── Zuk
+│   │           └── 62.jpg.7z
+│   └── VV
+│       └── Pictures
+│           └── Camera
+│               ├── ${id}
+│               │   └── 20_foo.jpg.7z
+│               └── Zfrance
+│                   ├── 21_foo.heic.jpg.7z
+│                   └── 30.jpg.7z
+├── box
+│   ├── Books
+│   │   └── 80.txt
+│   └── Storm
+│       ├── db
+│       │   └── 81.txt
+│       └── phone
+│           └── Pictures
+├── gphotos
+│   └── album
+│       └── rclone
+│           ├── ${id}_00.jpg
+│           ├── ${id}_01.jpg
+│           ├── ${id}_10.jpg
+│           ├── ${id}_60.jpg
+│           ├── 40.jpg
+│           ├── 41.jpg
+│           ├── Zgreece_02.jpg
+│           ├── Zgreece_03.jpg
+│           ├── Zgreece_11.jpg
+│           ├── Zgreece_42.jpg
+│           ├── Zgreece_61.jpg
+│           ├── Zportugal_43.jpg
+│           ├── Zspain_04.jpg
+│           └── Zuk_62.jpg
+├── pcloud
+│   ├── Pictures
+│   │   └── Camera
+│   │       ├── ${id}
+│   │       │   ├── 00.jpg.7z
+│   │       │   ├── 01.jpg.7z
+│   │       │   ├── 10.jpg.7z
+│   │       │   └── 60.jpg.7z
+│   │       ├── Zgreece
+│   │       │   ├── 02.jpg.7z
+│   │       │   ├── 03.jpg.7z
+│   │       │   ├── 11.jpg.7z
+│   │       │   └── 61.jpg.7z
+│   │       ├── Zspain
+│   │       │   └── 04.jpg.7z
+│   │       └── Zuk
+│   │           └── 62.jpg.7z
+│   └── VV
+│       └── Pictures
+│           └── Camera
+│               ├── ${id}
+│               │   └── 20_foo.jpg.7z
+│               └── Zfrance
+│                   ├── 21_foo.heic.jpg.7z
+│                   └── 30.jpg.7z
+├── vvdropbox
+└── vvgphotos
+    └── album
+        └── rclone
+            ├── ${id}_20_foo.jpg
+            ├── 50.jpg
+            ├── Zfrance_21_foo.heic.jpg
+            ├── Zfrance_30.jpg
+            └── Zfrance_51.jpg
+
+50 directories, 60 files
+EOF
+   )"
+
+   tree . | test::eq "$expected"
+}
+
+main() {
+   cleanup
+   setup_env
+   setup_folders
+
+   run set-backup-camera-buffer
+   run upload-buffer box
+
+   run move box "Storm/phone/Pictures/Camera" "$PICTURES_CAMERA"
+   run move vvdropbox "Camera uploads" "$PICTURES_CAMERA_VV"
+
+   run set-camera-buffers
+   run upload-buffer box
+   run upload-buffer pcloud
+   run upload-buffer alumni
+   run upload-telegram-buffer
+   run upload-buffer vvgphotos
+   run upload-buffer gphotos
+
+   run remove-backed-pictures
+
+   check_sdcard_tree
+
+   local -r id="$(get_folder_ids "${CLOUD}/alumni/Pictures/Camera" | xargs)"
+   check_cloud_tree "$id"
+}
+
+main "$@"
