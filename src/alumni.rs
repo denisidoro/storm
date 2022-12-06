@@ -11,7 +11,7 @@ pub fn download(list: &Path, to: &Path, start: usize, files: usize) -> Result<()
         .skip(start)
         .take(files)
         .into_iter()
-        .map(PathBuf::from)
+        .map(|s| PathBuf::from(format!("/Pictures/Camera/{}", s)))
         .collect();
     dbg!(&allowlist);
 
